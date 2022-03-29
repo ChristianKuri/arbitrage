@@ -3,7 +3,7 @@ const Web3 = require('web3');
 const abis = require('./abis');
 const { addresses } = require('./addresses');
 
-const web3 = new Web3(new Web3.providers.WebsocketProvider(process.env.BSC_MAINNET_WEBSOCKET));
+const web3 = new Web3(new Web3.providers.WebsocketProvider(process.env.GETBLOCK_BSC_MAINNET_WEBSOCKET));
 
 web3.eth.accounts.wallet.add(process.env.PRIVATE_KEY);
 
