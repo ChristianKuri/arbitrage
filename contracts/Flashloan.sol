@@ -13,16 +13,19 @@ contract Flashloan {
     IPancakeRouter02 public pancakeRouter;
     IPancakeFactory public pancakeFactory;
     address PancakeFactory;
-
     bytes arbdata;
+
     enum Direction {
         BakerytoPancake,
         PancaketoBakery
     }
+
     struct ArbInfo {
         Direction direction;
         uint256 repayAmount;
     }
+
+    event NewArbitrage(Direction direction, uint256 profit, uint256 date);
 
     constructor(
         address _pancakeFactory,
@@ -77,5 +80,83 @@ contract Flashloan {
         require(_amount0 == 0 || _amount1 == 0);
 
         IPancakeERC20 token = IPancakeERC20(_amount0 == 0 ? token1 : token0);
+
+        if (arbInfo.direction == Direction.BakerytoPancake) {
+            //Buy WBNB on BakerySwap
+            token.approve(address(bakeryRouter), amountToken);
+            address[] memory path = new address[](2);
+            path[0] = address(token0);
+            path[1] = address(token1);
+            uint256[] memory minOuts = bakeryRouter.getAmountsOut(
+                amountToken,
+                path
+            );
+            bakeryRouter.swapExactTokensForETH(
+                token.balanceOf(address(this)),
+                minOuts[1],
+                path,
+                address(this),
+                now
+            );
+
+            //Sell WBNB on PancakeSwap
+            address[] memory path2 = new address[](2);
+            path2[0] = address(token1);
+            path2[1] = address(token0);
+            uint256[] memory minOuts2 = pancakeRouter.getAmountsOut(
+                address(this).balance,
+                path2
+            );
+            pancakeRouter.swapExactETHForTokens.value(address(this).balance)(
+                minOuts2[1],
+                path2,
+                address(this),
+                now
+            );
+        }
+
+        if (arbInfo.direction == Direction.PancaketoBakery) {
+            //Buy WBNB on PancakeSwap
+            token.approve(address(pancakeRouter), amountToken);
+            address[] memory path = new address[](2);
+            path[0] = address(token0);
+            path[1] = address(token1);
+            uint256[] memory minOuts = pancakeRouter.getAmountsOut(
+                amountToken,
+                path
+            );
+            pancakeRouter.swapExactTokensForETH(
+                token.balanceOf(address(this)),
+                minOuts[1],
+                path,
+                address(this),
+                now
+            );
+
+            //Sell WBNB on BakerySwap
+            address[] memory path2 = new address[](2);
+            path2[0] = address(token1);
+            path2[1] = address(token0);
+            uint256[] memory minOuts2 = bakeryRouter.getAmountsOut(
+                address(this).balance,
+                path2
+            );
+            bakeryRouter.swapExactETHForTokens.value(address(this).balance)(
+                minOuts2[1],
+                path2,
+                address(this),
+                now
+            );
+        }
+
+        require(
+            token.balanceOf(address(this)) > arbInfo.repayAmount,
+            "Not enough funds to pay back the loan"
+        );
+
+        uint256 profit = token.balanceOf(address(this)) - arbInfo.repayAmount;
+        token.transfer(msg.sender, arbInfo.repayAmount);
+        token.transfer(tx.origin, profit);
+        emit NewArbitrage(arbInfo.direction, profit, block.timestamp);
     }
 }
