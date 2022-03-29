@@ -34,16 +34,16 @@ const init = async () => {
             console.log(`New block ${block.number}`);
 
             // Get the buy market
-            const buyAtPancakeSwap = await PancakeSwap.methods.getAmountsOut(amountInWBNB, [addresses.tokens.WBNB, addresses.tokens.BUSD]).call(); // buy TOKEN at PancakeSwap with (1) WBNB
-            const buyAtBakerySwap = await BakerySwap.methods.getAmountsOut(amountInWBNB, [addresses.tokens.WBNB, addresses.tokens.BUSD]).call(); // buy TOKEN at BakerySwap with (1) WBNB
-            const buyAtApeSwap = await ApeSwap.methods.getAmountsOut(amountInWBNB, [addresses.tokens.WBNB, addresses.tokens.BUSD]).call(); // buy TOKEN at ApeSwap with (1) WBNB
+            const buyAtPancakeSwap = await PancakeSwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, addresses.tokens.BUSD]).call(); // buy TOKEN at PancakeSwap with (1) WBNB
+            const buyAtBakerySwap = await BakerySwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, addresses.tokens.BUSD]).call(); // buy TOKEN at BakerySwap with (1) WBNB
+            const buyAtApeSwap = await ApeSwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, addresses.tokens.BUSD]).call(); // buy TOKEN at ApeSwap with (1) WBNB
 
             const maxTokens = getArrayMax([buyAtPancakeSwap[1], buyAtBakerySwap[1], buyAtApeSwap[1]]);
 
             // Get the sell market
-            const sellAtPancakeSwap = await PancakeSwap.methods.getAmountsOut(maxTokens, [addresses.tokens.BUSD, addresses.tokens.WBNB]).call(); // sell TOKEN at PancakeSwap to (1) WBNB
-            const sellAtBakerySwap = await BakerySwap.methods.getAmountsOut(maxTokens, [addresses.tokens.BUSD, addresses.tokens.WBNB]).call(); // sell TOKEN at BakerySwap to (1) WBNB
-            const sellAtApeSwap = await ApeSwap.methods.getAmountsOut(maxTokens, [addresses.tokens.BUSD, addresses.tokens.WBNB]).call(); // sell TOKEN at ApeSwap to (1) WBNB
+            const sellAtPancakeSwap = await PancakeSwap.methods.getAmountsOut(maxTokens, [addresses.tokens.BUSD, addresses.wbnb]).call(); // sell TOKEN at PancakeSwap to (1) WBNB
+            const sellAtBakerySwap = await BakerySwap.methods.getAmountsOut(maxTokens, [addresses.tokens.BUSD, addresses.wbnb]).call(); // sell TOKEN at BakerySwap to (1) WBNB
+            const sellAtApeSwap = await ApeSwap.methods.getAmountsOut(maxTokens, [addresses.tokens.BUSD, addresses.wbnb]).call(); // sell TOKEN at ApeSwap to (1) WBNB
 
             const maxWBNB = getArrayMax([sellAtPancakeSwap[1], sellAtBakerySwap[1], sellAtApeSwap[1]]);
 
@@ -98,19 +98,6 @@ const init = async () => {
                 console.log(`selling ${web3.utils.fromWei(maxTokens)} ${tokenName} at ${sellMarket} for ${web3.utils.fromWei(maxWBNB)} WBNB`);
                 console.log('------------------------------');
             }
-
-            /* const profitPancakeSwapToBakerySwap = amountsOut2[1].sub(amountInWBNB).sub(txCost);
-            const profitBakerySwapToPancakeSwap = amountsOut4[1].sub(amountInWBNB).sub(txCost);
-
-            if (profitPancakeSwapToBakerySwap > 0) {
-                console.log('Arb opportunity found from PancakeSwap -> BakerySwap!');
-                console.log(`Expected profit: ${web3.utils.fromWei(profitPancakeSwapToBakerySwap.toString())} USD`);
-            }
-
-            if (profitBakerySwapToPancakeSwap > 0) {
-                console.log('Arb opportunity found from BakerySwap -> PancakeSwap!');
-                console.log(`Expected profit: ${web3.utils.fromWei(profitBakerySwapToPancakeSwap.toString())} USD`);
-            } */
         })
         .on('error', (error) => {
             console.log(error);

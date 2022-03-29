@@ -7,6 +7,7 @@ module.exports = {
         pancakeSwap: pancakeSwapMainnet,
         bakerySwap: bakerySwapMainnet,
         apeSwap: apeSwapMainnet,
+        wbnb: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
         tokens: tokensMainnet,
     },
 };
