@@ -16,8 +16,8 @@ web3.eth
         console.log(`New block ${block.number}`);
 
         // buy from pancake and sell to bakery
-        const amountsOut1 = await PancakeSwap.methods.getAmountsOut(amountInUSD, [addresses.tokens.WBNB, addresses.tokens.BUSD]).call(); // 1 wbnb to USD
-        const amountsOut2 = await BakerySwap.methods.getAmountsOut(amountsOut1[1], [addresses.tokens.BUSD, addresses.tokens.WBNB]).call();
+        const amountsOut1 = await PancakeSwap.methods.getAmountsOut(amountInUSD, [addresses.tokens.WBNB, addresses.tokens.BUSD]).call(); // 1 wbnb to USD (sell WBNB at PancakeSwap)
+        const amountsOut2 = await BakerySwap.methods.getAmountsOut(amountsOut1[1], [addresses.tokens.BUSD, addresses.tokens.WBNB]).call(); // buy back the wbnb (buy WBNB at BakerySwap)
 
         // buy from bakery and sell to pancake
         const amountsOut3 = await BakerySwap.methods.getAmountsOut(amountInUSD, [addresses.tokens.WBNB, addresses.tokens.BUSD]).call();
@@ -27,6 +27,23 @@ web3.eth
         console.log(`BakerySwap -> PancakeSwap. WBNB input / output: ${web3.utils.fromWei(amountInUSD.toString())} / ${web3.utils.fromWei(amountsOut4[1].toString())}`);
         console.log(`PancakeSwap: ${web3.utils.fromWei(amountInUSD.toString())} WBNB sells for ${web3.utils.fromWei(amountsOut1[1].toString())} USD`);
         console.log(`BakerySwap: ${web3.utils.fromWei(amountInUSD.toString())} WBNB sells for ${web3.utils.fromWei(amountsOut3[1].toString())} USD`);
+
+        const gasCost = 200000;
+        const gasPrice = await web3.eth.getGasPrice();
+        const txCost = gasCost * parseInt(gasPrice);
+
+        const profitPancakeSwapToBakerySwap = amountsOut2[1].sub(amountInUSD).sub(txCost);
+        const profitBakerySwapToPancakeSwap = amountsOut4[1].sub(amountInUSD).sub(txCost);
+
+        if (profitPancakeSwapToBakerySwap > 0) {
+            console.log('Arb opportunity found from PancakeSwap -> BakerySwap!');
+            console.log(`Expected profit: ${web3.utils.fromWei(profitPancakeSwapToBakerySwap.toString())} USD`);
+        }
+
+        if (profitBakerySwapToPancakeSwap > 0) {
+            console.log('Arb opportunity found from BakerySwap -> PancakeSwap!');
+            console.log(`Expected profit: ${web3.utils.fromWei(profitBakerySwapToPancakeSwap.toString())} USD`);
+        }
     })
     .on('error', (error) => {
         console.log(error);
