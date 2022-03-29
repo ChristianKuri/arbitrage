@@ -9,6 +9,11 @@ import "./libraries/SafeMath.sol";
 import "./PancakeLibrary.sol";
 
 contract Flashloan {
+    IPancakeRouter02 public bakeryRouter;
+    IPancakeRouter02 public pancakeRouter;
+    IPancakeFactory public pancakeFactory;
+    address PancakeFactory;
+
     bytes arbdata;
     enum Direction {
         BakerytoPancake,
@@ -19,7 +24,16 @@ contract Flashloan {
         uint256 repayAmount;
     }
 
-    constructor() public {}
+    constructor(
+        address _pancakeFactory,
+        address _bakeryRouter,
+        address _pancakeRouter02
+    ) public {
+        pancakeFactory = IPancakeFactory(_pancakeFactory);
+        bakeryRouter = IPancakeRouter02(_bakeryRouter);
+        pancakeRouter = IPancakeRouter02(_pancakeRouter02);
+        PancakeFactory = _pancakeFactory;
+    }
 
     function startArbitrage(
         address token0,
@@ -54,6 +68,14 @@ contract Flashloan {
         address token0 = IPancakePair(msg.sender).token0();
         address token1 = IPancakePair(msg.sender).token1();
 
+        require(
+            msg.sender ==
+                PancakeLibrary.pairFor(PancakeFactory, token0, token1),
+            "Unauthorized sender should be pancake library"
+        );
+
         require(_amount0 == 0 || _amount1 == 0);
+
+        IPancakeERC20 token = IPancakeERC20(_amount0 == 0 ? token1 : token0);
     }
 }
