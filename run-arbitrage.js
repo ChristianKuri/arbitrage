@@ -5,6 +5,8 @@ const { addresses } = require('./addresses');
 
 const web3 = new Web3(new Web3.providers.WebsocketProvider(process.env.BSC_MAINNET_WEBSOCKET));
 
+web3.eth.accounts.wallet.add(process.env.PRIVATE_KEY);
+
 const amountInUSD = web3.utils.toBN(web3.utils.toWei('1'));
 
 const PancakeSwap = new web3.eth.Contract(abis.pancakeSwap.router, addresses.pancakeSwap.router);
