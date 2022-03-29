@@ -49,7 +49,10 @@ contract Flashloan {
         arbdata = abi.encode(
             ArbInfo({direction: _direction, repayAmount: repayAmount})
         );
-        address pairAddress = IPancakeFactory().getPair(token0, token1);
+        address pairAddress = IPancakeFactory(pancakeFactory).getPair(
+            token0,
+            token1
+        );
         require(pairAddress != address(0), "This pool does not exist");
         IPancakePair(pairAddress).swap(
             amount0,
@@ -107,7 +110,7 @@ contract Flashloan {
                 address(this).balance,
                 path2
             );
-            pancakeRouter.swapExactETHForTokens.value(address(this).balance)(
+            pancakeRouter.swapExactETHForTokens{value: address(this).balance}(
                 minOuts2[1],
                 path2,
                 address(this),
@@ -141,7 +144,7 @@ contract Flashloan {
                 address(this).balance,
                 path2
             );
-            bakeryRouter.swapExactETHForTokens.value(address(this).balance)(
+            bakeryRouter.swapExactETHForTokens{value: address(this).balance}(
                 minOuts2[1],
                 path2,
                 address(this),
