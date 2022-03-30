@@ -46,13 +46,8 @@ contract Flashloan {
         Direction _direction,
         uint256 repayAmount
     ) external {
-        arbdata = abi.encode(
-            ArbInfo({direction: _direction, repayAmount: repayAmount})
-        );
-        address pairAddress = IPancakeFactory(pancakeFactory).getPair(
-            token0,
-            token1
-        );
+        arbdata = abi.encode(ArbInfo({direction: _direction, repayAmount: repayAmount}));
+        address pairAddress = IPancakeFactory(pancakeFactory).getPair(token0, token1);
         require(pairAddress != address(0), "This pool does not exist");
         IPancakePair(pairAddress).swap(
             amount0,
@@ -74,11 +69,7 @@ contract Flashloan {
         address token0 = IPancakePair(msg.sender).token0();
         address token1 = IPancakePair(msg.sender).token1();
 
-        require(
-            msg.sender ==
-                PancakeLibrary.pairFor(PancakeFactory, token0, token1),
-            "Unauthorized sender should be pancake library"
-        );
+        require(msg.sender == PancakeLibrary.pairFor(PancakeFactory, token0, token1), "Unauthorized sender should be pancake library");
 
         require(_amount0 == 0 || _amount1 == 0);
 
@@ -90,32 +81,15 @@ contract Flashloan {
             address[] memory path = new address[](2);
             path[0] = address(token0);
             path[1] = address(token1);
-            uint256[] memory minOuts = bakeryRouter.getAmountsOut(
-                amountToken,
-                path
-            );
-            bakeryRouter.swapExactTokensForETH(
-                token.balanceOf(address(this)),
-                minOuts[1],
-                path,
-                address(this),
-                now
-            );
+            uint256[] memory minOuts = bakeryRouter.getAmountsOut(amountToken, path);
+            bakeryRouter.swapExactTokensForETH(token.balanceOf(address(this)), minOuts[1], path, address(this), now);
 
             //Sell WBNB on PancakeSwap
             address[] memory path2 = new address[](2);
             path2[0] = address(token1);
             path2[1] = address(token0);
-            uint256[] memory minOuts2 = pancakeRouter.getAmountsOut(
-                address(this).balance,
-                path2
-            );
-            pancakeRouter.swapExactETHForTokens{value: address(this).balance}(
-                minOuts2[1],
-                path2,
-                address(this),
-                now
-            );
+            uint256[] memory minOuts2 = pancakeRouter.getAmountsOut(address(this).balance, path2);
+            pancakeRouter.swapExactETHForTokens{value: address(this).balance}(minOuts2[1], path2, address(this), now);
         }
 
         if (arbInfo.direction == Direction.PancaketoBakery) {
@@ -124,38 +98,18 @@ contract Flashloan {
             address[] memory path = new address[](2);
             path[0] = address(token0);
             path[1] = address(token1);
-            uint256[] memory minOuts = pancakeRouter.getAmountsOut(
-                amountToken,
-                path
-            );
-            pancakeRouter.swapExactTokensForETH(
-                token.balanceOf(address(this)),
-                minOuts[1],
-                path,
-                address(this),
-                now
-            );
+            uint256[] memory minOuts = pancakeRouter.getAmountsOut(amountToken, path);
+            pancakeRouter.swapExactTokensForETH(token.balanceOf(address(this)), minOuts[1], path, address(this), now);
 
             //Sell WBNB on BakerySwap
             address[] memory path2 = new address[](2);
             path2[0] = address(token1);
             path2[1] = address(token0);
-            uint256[] memory minOuts2 = bakeryRouter.getAmountsOut(
-                address(this).balance,
-                path2
-            );
-            bakeryRouter.swapExactETHForTokens{value: address(this).balance}(
-                minOuts2[1],
-                path2,
-                address(this),
-                now
-            );
+            uint256[] memory minOuts2 = bakeryRouter.getAmountsOut(address(this).balance, path2);
+            bakeryRouter.swapExactETHForTokens{value: address(this).balance}(minOuts2[1], path2, address(this), now);
         }
 
-        require(
-            token.balanceOf(address(this)) > arbInfo.repayAmount,
-            "Not enough funds to pay back the loan"
-        );
+        require(token.balanceOf(address(this)) > arbInfo.repayAmount, "Not enough funds to pay back the loan");
 
         uint256 profit = token.balanceOf(address(this)) - arbInfo.repayAmount;
         token.transfer(msg.sender, arbInfo.repayAmount);
