@@ -69,7 +69,7 @@ const init = async () => {
         )
 
         // calculate costs
-        const gasCost = 200000
+        const gasCost = 440000
         const gasPrice = await web3.eth.getGasPrice()
         const txCost = gasCost * parseInt(gasPrice)
         const flashLoanCost = amountInWBNB * 0.003
@@ -89,9 +89,27 @@ const init = async () => {
               buying ${web3.utils.fromWei(maxTokens)} ${tokenName} at ${buyMarket} using ${web3.utils.fromWei(amountInWBNB)} WBNB
               selling ${web3.utils.fromWei(maxTokens)} ${tokenName} at ${sellMarket} for ${web3.utils.fromWei(maxWBNB)} WBNB
               ------------------------------
-              `,
+            `,
             `logs/opportunities/${tokenName}.log`,
           )
+
+          /* let tx = flashloan.methods.startArbitrage(
+            addresses.wbnb, // token0
+            tokenAddress, // token1
+            amountInWBNB.toString(), // amount0
+            0, // amount1
+            DIRECTION.BAKERY_TO_PANCAKE,
+            repayAmount.toString(),
+          )
+
+          const data = tx.encodeABI()
+          const txData = {
+            from: admin,
+            to: flashloan.options.address,
+            data,
+            gas: gas,
+            gasPrice: gasPrice,
+          } */
         }
       }
     })
