@@ -11,17 +11,26 @@ const web3 = new Web3(new Web3.providers.WebsocketProvider(process.env.GETBLOCK_
 const { address: admin } = web3.eth.accounts.wallet.add(process.env.PRIVATE_KEY);
 
 const amountInWBNB = web3.utils.toBN(web3.utils.toWei('1'));
-const repayAmount = amountInWBNB - amountInWBNB * 0.997 + amountInWBNB;
 
-const PancakeSwap = new web3.eth.Contract(abis.pancakeSwap.router, addresses.pancakeSwap.router);
-const BakerySwap = new web3.eth.Contract(abis.bakerySwap.router, addresses.bakerySwap.router);
-const ApeSwap = new web3.eth.Contract(abis.apeSwap.router, addresses.apeSwap.router);
-const BiSwap = new web3.eth.Contract(abis.biSwap.router, addresses.biSwap.router);
+const exchanges = {
+    pancakeSwap: new web3.eth.Contract(abis.pancakeSwap.router, addresses.pancakeSwap.router),
+    bakerySwap: new web3.eth.Contract(abis.bakerySwap.router, addresses.bakerySwap.router),
+    apeSwap: new web3.eth.Contract(abis.apeSwap.router, addresses.apeSwap.router),
+    biSwap: new web3.eth.Contract(abis.biSwap.router, addresses.biSwap.router),
+};
 
 const getArrayMax = (array) => {
     return array.reduce((a, b) => {
         return BigNumber(a).gt(BigNumber(b)) ? BigNumber(a).toString() : BigNumber(b).toString();
     });
+};
+
+const getObjectMax = (obj) => {
+    const keys = Object.keys(obj);
+    const values = keys.map((key) => {
+        return obj[key];
+    });
+    return keys[values.indexOf(getArrayMax(values))];
 };
 
 const init = async () => {
@@ -35,97 +44,53 @@ const init = async () => {
 
             for (var [tokenName, tokenAddress] of Object.entries(addresses.tokens)) {
                 // Get the buy market
-                const buyAtPancakeSwap = await PancakeSwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call(); // buy TOKEN at PancakeSwap with (1) WBNB
-                const buyAtBakerySwap = await BakerySwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call(); // buy TOKEN at BakerySwap with (1) WBNB
-                const buyAtApeSwap = await ApeSwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call(); // buy TOKEN at ApeSwap with (1) WBNB
-                const buyAtBiSwap = await BiSwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call(); // buy TOKEN at BiSwap with (1) WBNB
-                const maxTokens = getArrayMax([buyAtPancakeSwap[1], buyAtBakerySwap[1], buyAtApeSwap[1], buyAtBiSwap[1]]);
+                let buyAt = {};
+                for (var [exchangeName, exchangeContract] of Object.entries(exchanges)) {
+                    const data = await exchangeContract.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call(); // buy TOKEN from (1) WBNB
+                    buyAt[exchangeName] = data[1];
+                }
+                const buyMarket = getObjectMax(buyAt);
+                const maxTokens = buyAt[buyMarket];
 
                 // Get the sell market
-                const sellAtPancakeSwap = await PancakeSwap.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call(); // sell TOKEN at PancakeSwap to (1) WBNB
-                const sellAtBakerySwap = await BakerySwap.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call(); // sell TOKEN at BakerySwap to (1) WBNB
-                const sellAtApeSwap = await ApeSwap.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call(); // sell TOKEN at ApeSwap to (1) WBNB
-                const sellAtBiSwap = await BiSwap.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call(); // sell TOKEN at BiSwap to (1) WBNB
-                const maxWBNB = getArrayMax([sellAtPancakeSwap[1], sellAtBakerySwap[1], sellAtApeSwap[1], sellAtBiSwap[1]]);
-
-                // create logs
-                var buyMarket;
-                var sellMarket;
-
-                switch (maxTokens) {
-                    case buyAtPancakeSwap[1]:
-                        buyMarket = 'PancakeSwap';
-                        break;
-
-                    case buyAtBakerySwap[1]:
-                        buyMarket = 'BakerySwap';
-                        break;
-
-                    case buyAtApeSwap[1]:
-                        buyMarket = 'ApeSwap';
-                        break;
-
-                    case buyAtBiSwap[1]:
-                        buyMarket = 'BiSwap';
-                        break;
+                let sellAt = {};
+                for (var [exchangeName, exchangeContract] of Object.entries(exchanges)) {
+                    const data = await exchangeContract.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call(); // sell TOKEN to (1) WBNB
+                    sellAt[exchangeName] = data[1];
                 }
-
-                switch (maxWBNB) {
-                    case sellAtPancakeSwap[1]:
-                        sellMarket = 'PancakeSwap';
-                        break;
-
-                    case sellAtBakerySwap[1]:
-                        sellMarket = 'BakerySwap';
-                        break;
-
-                    case sellAtApeSwap[1]:
-                        sellMarket = 'ApeSwap';
-                        break;
-
-                    case sellAtBiSwap[1]:
-                        sellMarket = 'BiSwap';
-                        break;
-                }
+                const sellMarket = getObjectMax(sellAt);
+                const maxWBNB = sellAt[sellMarket];
 
                 log(
                     `${buyMarket} -> ${sellMarket}. WBNB -> ${tokenName} -> WBNB input / output: ${web3.utils.fromWei(amountInWBNB.toString())} / ${web3.utils.fromWei(maxWBNB.toString())}`,
-                    `logs/${tokenName}.log`
-                );
-
-                detailedLog(
-                    tokenName,
-                    web3,
-                    buyAtPancakeSwap,
-                    buyAtBakerySwap,
-                    buyAtApeSwap,
-                    buyAtBiSwap,
-                    amountInWBNB,
-                    buyMarket,
-                    maxTokens,
-                    sellAtPancakeSwap,
-                    sellAtBakerySwap,
-                    sellAtApeSwap,
-                    sellAtBiSwap,
-                    sellMarket
+                    `logs/simple/${tokenName}.log`
                 );
 
                 // calculate costs
                 const gasCost = 200000;
                 const gasPrice = await web3.eth.getGasPrice();
                 const txCost = gasCost * parseInt(gasPrice);
+                const flashLoanCost = amountInWBNB * 0.003;
 
                 // calculate profit
-                const profit = BigNumber(maxWBNB).minus(repayAmount).minus(txCost);
+                const profit = BigNumber(maxWBNB).minus(amountInWBNB).minus(flashLoanCost).minus(txCost);
+
+                detailedLog(block, tokenName, amountInWBNB, maxTokens, maxWBNB, buyAt, sellAt, buyMarket, sellMarket, profit, txCost, flashLoanCost);
 
                 // send transaction
                 if (profit.gt(0)) {
-                    log('------------------------------', `opportunities/${tokenName}.log`);
-                    log('Arb opportunity found', `opportunities/${tokenName}.log`);
-                    log(`Expected profit: ${web3.utils.fromWei(profit.toString())} WBNB`, `opportunities/${tokenName}.log`);
-                    log(`buying ${web3.utils.fromWei(maxTokens)} ${tokenName} at ${buyMarket} using ${web3.utils.fromWei(amountInWBNB)} WBNB`, `opportunities/${tokenName}.log`);
-                    log(`selling ${web3.utils.fromWei(maxTokens)} ${tokenName} at ${sellMarket} for ${web3.utils.fromWei(maxWBNB)} WBNB`, `opportunities/${tokenName}.log`);
-                    log('------------------------------', `opportunities/${tokenName}.log`);
+                    log(
+                        `
+                    ------------------------------
+                    Arb opportunity found
+                    Expected profit: ${web3.utils.fromWei(profit.toString())} WBNB`,
+                        `opportunities/${tokenName}.log
+                    buying ${web3.utils.fromWei(maxTokens)} ${tokenName} at ${buyMarket} using ${web3.utils.fromWei(amountInWBNB)} WBNB
+                    selling ${web3.utils.fromWei(maxTokens)} ${tokenName} at ${sellMarket} for ${web3.utils.fromWei(maxWBNB)} WBNB
+                    ------------------------------
+                    `,
+                        `logs/opportunities/${tokenName}.log`
+                    );
                 }
             }
         })
@@ -135,38 +100,35 @@ const init = async () => {
 };
 init();
 
-const detailedLog = (
-    tokenName,
-    web3,
-    buyAtPancakeSwap,
-    buyAtBakerySwap,
-    buyAtApeSwap,
-    buyAtBiSwap,
-    amountInWBNB,
-    buyMarket,
-    maxTokens,
-    sellAtPancakeSwap,
-    sellAtBakerySwap,
-    sellAtApeSwap,
-    sellAtBiSwap,
-    sellMarket
-) => {
-    log(
-        `
-    ------------------------ buy ------------------------
-    Buy ${web3.utils.fromWei(buyAtPancakeSwap[1])} ${tokenName} at PancakeSwap using ${web3.utils.fromWei(amountInWBNB)} WBNB
-    Buy ${web3.utils.fromWei(buyAtBakerySwap[1])} ${tokenName} at BakerySwap using ${web3.utils.fromWei(amountInWBNB)} WBNB
-    Buy ${web3.utils.fromWei(buyAtApeSwap[1])} ${tokenName} at ApeSwap using ${web3.utils.fromWei(amountInWBNB)} WBNB
-    Buy ${web3.utils.fromWei(buyAtBiSwap[1])} ${tokenName} at BiSwap using ${web3.utils.fromWei(amountInWBNB)} WBNB
-    The best place to buy is ${buyMarket}
-    ------------------------ sell ------------------------
-    sell ${web3.utils.fromWei(maxTokens)} ${tokenName} at PancakeSwap for ${web3.utils.fromWei(sellAtPancakeSwap[1])} WBNB
-    sell ${web3.utils.fromWei(maxTokens)} ${tokenName} at BakerySwap for ${web3.utils.fromWei(sellAtBakerySwap[1])} WBNB
-    sell ${web3.utils.fromWei(maxTokens)} ${tokenName} at ApeSwap for ${web3.utils.fromWei(sellAtApeSwap[1])} WBNB
-    sell ${web3.utils.fromWei(maxTokens)} ${tokenName} at BiSwap for ${web3.utils.fromWei(sellAtBiSwap[1])} WBNB
-    The best place to sell is ${sellMarket}
-    ------------------------------------------------------
-    `,
-        `logs/detailed-${tokenName}.log`
-    );
+const detailedLog = (block, tokenName, amountInWBNB, maxTokens, maxWBNB, buyAt, sellAt, buyMarket, sellMarket, profit, txCost, flashLoanCost) => {
+    var text = '\n';
+    text += `   Block: ${block.number}\n`;
+    text += '   -------------------------------- Buy --------------------------------\n';
+    for (var [exchangeName, exchangeAmount] of Object.entries(buyAt)) {
+        text += `   Buy ${web3.utils.fromWei(exchangeAmount)} ${tokenName} at ${exchangeName} using ${web3.utils.fromWei(amountInWBNB)} WBNB\n`;
+    }
+    text += `   The best place to buy ${tokenName} using ${web3.utils.fromWei(amountInWBNB)} WBNB is ${buyMarket}\n`;
+    text += '   -------------------------------- Sell --------------------------------\n';
+    for (var [exchangeName, exchangeAmount] of Object.entries(sellAt)) {
+        text += `   Sell ${web3.utils.fromWei(maxTokens)} ${tokenName} at ${exchangeName} for ${web3.utils.fromWei(exchangeAmount)} WBNB\n`;
+    }
+    text += `   The best place to sell the ${tokenName} to WBNB is ${sellMarket}\n`;
+    text += '   ----------------------------- Best route -----------------------------\n';
+    text += `   ${buyMarket} -> ${sellMarket}. WBNB -> ${tokenName} -> WBNB input / output: ${web3.utils.fromWei(amountInWBNB.toString())} / ${web3.utils.fromWei(maxWBNB.toString())}\n`;
+
+    if (profit.gt(0)) {
+        text += `   ------------------------------ Profit ------------------------------\n`;
+        text += `   Transaction profit: ${web3.utils.fromWei((amountInWBNB - maxWBNB).toString())} WBNB\n`;
+    }
+
+    text += `   -------------------------------- Costs -------------------------------\n`;
+    if (!profit.gt(0)) {
+        text += `   Transaction loss: ${web3.utils.fromWei((amountInWBNB - maxWBNB).toString())} WBNB\n`;
+    }
+    text += `   TX cost: ${web3.utils.fromWei(txCost.toString())} WBNB\n`;
+    text += `   Flash loan cost: ${web3.utils.fromWei(flashLoanCost.toString())} WBNB\n`;
+    text += '   ------------------------------- Result -------------------------------\n';
+    text += `   Expected profit: ${web3.utils.fromWei(profit.toString())} WBNB\n\n`;
+
+    log(text, `logs/detailed/${tokenName}.log`);
 };
