@@ -16,6 +16,7 @@ const repayAmount = amountInWBNB - amountInWBNB * 0.997 + amountInWBNB;
 const PancakeSwap = new web3.eth.Contract(abis.pancakeSwap.router, addresses.pancakeSwap.router);
 const BakerySwap = new web3.eth.Contract(abis.bakerySwap.router, addresses.bakerySwap.router);
 const ApeSwap = new web3.eth.Contract(abis.apeSwap.router, addresses.apeSwap.router);
+const BiSwap = new web3.eth.Contract(abis.biSwap.router, addresses.biSwap.router);
 
 const getArrayMax = (array) => {
     return array.reduce((a, b) => {
@@ -37,13 +38,15 @@ const init = async () => {
                 const buyAtPancakeSwap = await PancakeSwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call(); // buy TOKEN at PancakeSwap with (1) WBNB
                 const buyAtBakerySwap = await BakerySwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call(); // buy TOKEN at BakerySwap with (1) WBNB
                 const buyAtApeSwap = await ApeSwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call(); // buy TOKEN at ApeSwap with (1) WBNB
-                const maxTokens = getArrayMax([buyAtPancakeSwap[1], buyAtBakerySwap[1], buyAtApeSwap[1]]);
+                const buyAtBiSwap = await BiSwap.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call(); // buy TOKEN at BiSwap with (1) WBNB
+                const maxTokens = getArrayMax([buyAtPancakeSwap[1], buyAtBakerySwap[1], buyAtApeSwap[1], buyAtBiSwap[1]]);
 
                 // Get the sell market
                 const sellAtPancakeSwap = await PancakeSwap.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call(); // sell TOKEN at PancakeSwap to (1) WBNB
                 const sellAtBakerySwap = await BakerySwap.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call(); // sell TOKEN at BakerySwap to (1) WBNB
                 const sellAtApeSwap = await ApeSwap.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call(); // sell TOKEN at ApeSwap to (1) WBNB
-                const maxWBNB = getArrayMax([sellAtPancakeSwap[1], sellAtBakerySwap[1], sellAtApeSwap[1]]);
+                const sellAtBiSwap = await BiSwap.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call(); // sell TOKEN at BiSwap to (1) WBNB
+                const maxWBNB = getArrayMax([sellAtPancakeSwap[1], sellAtBakerySwap[1], sellAtApeSwap[1], sellAtBiSwap[1]]);
 
                 // create logs
                 var buyMarket;
@@ -61,6 +64,10 @@ const init = async () => {
                     case buyAtApeSwap[1]:
                         buyMarket = 'ApeSwap';
                         break;
+
+                    case buyAtBiSwap[1]:
+                        buyMarket = 'BiSwap';
+                        break;
                 }
 
                 switch (maxWBNB) {
@@ -75,6 +82,10 @@ const init = async () => {
                     case sellAtApeSwap[1]:
                         sellMarket = 'ApeSwap';
                         break;
+
+                    case sellAtBiSwap[1]:
+                        sellMarket = 'BiSwap';
+                        break;
                 }
 
                 log(
@@ -82,7 +93,22 @@ const init = async () => {
                     `logs/${tokenName}.log`
                 );
 
-                // detailedLog(tokenName, web3, buyAtPancakeSwap, buyAtBakerySwap, buyAtApeSwap, amountInWBNB, buyMarket, maxTokens, sellAtPancakeSwap, sellAtBakerySwap, sellAtApeSwap, sellMarket);
+                detailedLog(
+                    tokenName,
+                    web3,
+                    buyAtPancakeSwap,
+                    buyAtBakerySwap,
+                    buyAtApeSwap,
+                    buyAtBiSwap,
+                    amountInWBNB,
+                    buyMarket,
+                    maxTokens,
+                    sellAtPancakeSwap,
+                    sellAtBakerySwap,
+                    sellAtApeSwap,
+                    sellAtBiSwap,
+                    sellMarket
+                );
 
                 // calculate costs
                 const gasCost = 200000;
@@ -109,18 +135,35 @@ const init = async () => {
 };
 init();
 
-const detailedLog = (tokenName, web3, buyAtPancakeSwap, buyAtBakerySwap, buyAtApeSwap, amountInWBNB, buyMarket, maxTokens, sellAtPancakeSwap, sellAtBakerySwap, sellAtApeSwap, sellMarket) => {
+const detailedLog = (
+    tokenName,
+    web3,
+    buyAtPancakeSwap,
+    buyAtBakerySwap,
+    buyAtApeSwap,
+    buyAtBiSwap,
+    amountInWBNB,
+    buyMarket,
+    maxTokens,
+    sellAtPancakeSwap,
+    sellAtBakerySwap,
+    sellAtApeSwap,
+    sellAtBiSwap,
+    sellMarket
+) => {
     log(
         `
     ------------------------ buy ------------------------
     Buy ${web3.utils.fromWei(buyAtPancakeSwap[1])} ${tokenName} at PancakeSwap using ${web3.utils.fromWei(amountInWBNB)} WBNB
     Buy ${web3.utils.fromWei(buyAtBakerySwap[1])} ${tokenName} at BakerySwap using ${web3.utils.fromWei(amountInWBNB)} WBNB
     Buy ${web3.utils.fromWei(buyAtApeSwap[1])} ${tokenName} at ApeSwap using ${web3.utils.fromWei(amountInWBNB)} WBNB
+    Buy ${web3.utils.fromWei(buyAtBiSwap[1])} ${tokenName} at BiSwap using ${web3.utils.fromWei(amountInWBNB)} WBNB
     The best place to buy is ${buyMarket}
     ------------------------ sell ------------------------
     sell ${web3.utils.fromWei(maxTokens)} ${tokenName} at PancakeSwap for ${web3.utils.fromWei(sellAtPancakeSwap[1])} WBNB
     sell ${web3.utils.fromWei(maxTokens)} ${tokenName} at BakerySwap for ${web3.utils.fromWei(sellAtBakerySwap[1])} WBNB
     sell ${web3.utils.fromWei(maxTokens)} ${tokenName} at ApeSwap for ${web3.utils.fromWei(sellAtApeSwap[1])} WBNB
+    sell ${web3.utils.fromWei(maxTokens)} ${tokenName} at BiSwap for ${web3.utils.fromWei(sellAtBiSwap[1])} WBNB
     The best place to sell is ${sellMarket}
     ------------------------------------------------------
     `,
