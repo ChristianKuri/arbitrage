@@ -70,7 +70,6 @@ contract Flashloan {
         address token1 = IPancakePair(msg.sender).token1();
 
         require(msg.sender == PancakeLibrary.pairFor(PancakeFactory, token0, token1), "Unauthorized sender should be pancake library");
-
         require(_amount0 == 0 || _amount1 == 0);
 
         IPancakeERC20 token = IPancakeERC20(_amount0 == 0 ? token1 : token0);

@@ -6,9 +6,10 @@ const BigNumber = require('bignumber.js')
 const Flashloan = require('./build/contracts/Flashloan.json')
 const log = require('log-to-file')
 
-const web3 = new Web3(new Web3.providers.WebsocketProvider(process.env.GETBLOCK_BSC_MAINNET_WEBSOCKET))
-
+/** Config */
+const web3 = new Web3(new Web3.providers.WebsocketProvider(process.env.NARIOX_BSC_MAINNET_WEBSOCKET))
 const { address: admin } = web3.eth.accounts.wallet.add(process.env.PRIVATE_KEY)
+BigNumber.config({ EXPONENTIAL_AT: [-30, 30] })
 
 const amountInWBNB = web3.utils.toBN(web3.utils.toWei('1'))
 
@@ -17,6 +18,7 @@ const exchanges = {
   bakerySwap: new web3.eth.Contract(abis.bakerySwap.router, addresses.bakerySwap.router),
   apeSwap: new web3.eth.Contract(abis.apeSwap.router, addresses.apeSwap.router),
   biSwap: new web3.eth.Contract(abis.biSwap.router, addresses.biSwap.router),
+  babySwap: new web3.eth.Contract(abis.babySwap.router, addresses.babySwap.router),
 }
 
 const getArrayMax = (array) => {
@@ -75,7 +77,8 @@ const init = async () => {
         const flashLoanCost = amountInWBNB * 0.003
 
         // calculate profit
-        const profit = BigNumber(maxWBNB).minus(amountInWBNB).minus(flashLoanCost).minus(txCost)
+        //const profit = BigNumber(maxWBNB).minus(amountInWBNB).minus(flashLoanCost).minus(txCost)
+        const profit = BigNumber(maxWBNB).minus(amountInWBNB)
 
         detailedLog(block, tokenName, amountInWBNB, maxTokens, maxWBNB, buyAt, sellAt, buyMarket, sellMarket, profit, txCost, flashLoanCost)
 
@@ -150,9 +153,9 @@ const detailedLog = (
     amountInWBNB.toString(),
   )} / ${web3.utils.fromWei(maxWBNB.toString())}\n`
 
-  if (profit.gt(0)) {
+  if (BigNumber(maxWBNB).gt(BigNumber(amountInWBNB))) {
     text += `   ------------------------------ Profit ------------------------------\n`
-    text += `   Transaction profit: ${web3.utils.fromWei((amountInWBNB - maxWBNB).toString())} WBNB\n`
+    text += `   Transaction profit: ${web3.utils.fromWei((maxWBNB - amountInWBNB).toString())} WBNB\n`
   }
 
   text += `   -------------------------------- Costs -------------------------------\n`
