@@ -48,8 +48,10 @@ const init = async () => {
         // Get the buy market
         let buyAt = {}
         for (var [exchangeName, exchangeContract] of Object.entries(exchanges)) {
-          const data = await exchangeContract.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call() // buy TOKEN from (1) WBNB
-          buyAt[exchangeName] = data[1]
+          try {
+            const data = await exchangeContract.methods.getAmountsOut(amountInWBNB, [addresses.wbnb, tokenAddress]).call() // buy TOKEN from (1) WBNB
+            buyAt[exchangeName] = data[1]
+          } catch (error) {}
         }
         const buyMarket = getObjectMax(buyAt)
         const maxTokens = buyAt[buyMarket]
@@ -57,8 +59,10 @@ const init = async () => {
         // Get the sell market
         let sellAt = {}
         for (var [exchangeName, exchangeContract] of Object.entries(exchanges)) {
-          const data = await exchangeContract.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call() // sell TOKEN to (1) WBNB
-          sellAt[exchangeName] = data[1]
+          try {
+            const data = await exchangeContract.methods.getAmountsOut(maxTokens, [tokenAddress, addresses.wbnb]).call() // sell TOKEN to (1) WBNB
+            sellAt[exchangeName] = data[1]
+          } catch (error) {}
         }
         const sellMarket = getObjectMax(sellAt)
         const maxWBNB = sellAt[sellMarket]
