@@ -81,8 +81,8 @@ const init = async () => {
         const flashLoanCost = amountInWBNB * 0.003
 
         // calculate profit
-        //const profit = BigNumber(maxWBNB).minus(amountInWBNB).minus(flashLoanCost).minus(txCost)
-        const profit = BigNumber(maxWBNB).minus(amountInWBNB)
+        const profit = BigNumber(maxWBNB).minus(amountInWBNB).minus(flashLoanCost).minus(txCost)
+        //const profit = BigNumber(maxWBNB).minus(amountInWBNB)
 
         detailedLog(block, tokenName, amountInWBNB, maxTokens, maxWBNB, buyAt, sellAt, buyMarket, sellMarket, profit, txCost, flashLoanCost)
 
